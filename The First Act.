@@ -1,0 +1,68 @@
+// A Solana smart contract to facilitate donations
+// 2% of each transaction is sent to a secure wallet for cancer research
+
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint,
+    entrypoint::ProgramResult,
+    msg,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
+
+entrypoint!(process_instruction);
+
+fn process_instruction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+
+    // Transaction sender
+    let sender_account = next_account_info(accounts_iter)?;
+    if !sender_account.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    // Transaction receiver
+    let receiver_account = next_account_info(accounts_iter)?;
+
+    // Donation wallet controlled by Hussein Mundher
+    let donation_account = next_account_info(accounts_iter)?;
+
+    // Verify the donation account matches the expected public key
+    let expected_donation_wallet: Pubkey = "HiwqNQEnALHWz5wovCLYxUscfF9AmLmMbs18rhyioNfY".parse().unwrap();
+    if *donation_account.key != expected_donation_wallet {
+        msg!("Donation wallet mismatch!");
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    // Extract the transaction amount from the instruction data
+    let transaction_amount = u64::from_le_bytes(
+        instruction_data
+            .get(..8)
+            .ok_or(ProgramError::InvalidInstructionData)?
+            .try_into()
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+
+    // Calculate the donation amount (2%)
+    let donation_amount = transaction_amount / 50; // 2% = 1/50
+
+    // Perform the transaction logic
+    // In a real implementation, this would involve Solana token transfers
+    // Here, we just log the details for demonstration purposes
+    msg!("Transaction Amount: {}", transaction_amount);
+    msg!("Donation Amount: {}", donation_amount);
+    msg!("Remaining Amount: {}", transaction_amount - donation_amount);
+
+    // Ensure the donation amount is transferred to the donation wallet
+    msg!(
+        "Transferring {} lamports to the donation wallet: {}",
+        donation_amount,
+        donation_account.key
+    );
+
+    Ok(())
+}
